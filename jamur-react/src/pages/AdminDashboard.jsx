@@ -20,3 +20,28 @@ const AdminDashboard = () => {
   // Chart Ref
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
+
+  // 1. CEK TOKEN & LOAD DATA AWAL
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    
+    if (!token || role !== "admin") {
+      navigate("/login");
+    } else {
+      setAdminName(localStorage.getItem("username") || "Admin");
+      fetchSensorData();
+      fetchSettings();
+      fetchChartData();
+      
+      // Auto refresh data sensor & chart setiap 3 detik
+      const interval = setInterval(() => {
+        if(activeTab === "dashboard") {
+          fetchSensorData();
+          fetchSettings();
+          fetchChartData();
+        }
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [navigate, activeTab]);
