@@ -29,8 +29,6 @@ exports.getAllData = async (req, res) => {
   }
 };
 
-
-
 // 3. Simpan data (Input dari ESP32 atau Postman) + Logika Otomatis
 exports.sendData = async (req, res) => {
   const { temperature, humidity } = req.body;
@@ -46,3 +44,50 @@ exports.sendData = async (req, res) => {
       "INSERT INTO sensor_data (temperature, humidity) VALUES (?, ?)",
       [temperature, humidity]
     );
+
+    // --- LOG TERMINAL BARU ---
+    console.log(
+      `[${new Date().toLocaleTimeString()}] 📥 Data Masuk: Temp: ${temperature}°C, Hum: ${humidity}% ✅ Tersimpan di Database`
+    );
+
+    // B. LOGIKA OTOMATISASI SIMULASI
+    const [settings] = await db.query("SELECT * FROM settings WHERE id = 1");
+
+    if (settings.length > 0) {
+      const { min_humidity, mode, pump_status } = settings[0];
+
+      if (mode === "otomatis") {
+        let newPumpStatus = pump_status;
+
+        if (humidity < min_humidity) {
+          newPumpStatus = 1;
+        } else {
+          newPumpStatus = 0;
+        }
+
+        if (newPumpStatus !== pump_status) {
+          await db.query("UPDATE settings SET pump_status = ? WHERE id = 1", [
+            newPumpStatus,
+          ]);
+
+          const actionMsg =
+            newPumpStatus === 1
+              ? `Sistem Otomatis: Menyalakan Pompa (Lembap: ${humidity}%)`
+              : `Sistem Otomatis: Mematikan Pompa (Lembap: ${humidity}%)`;
+
+          await db.query("INSERT INTO logs (action) VALUES (?)", [actionMsg]);
+
+          // --- LOG TERMINAL UNTUK AKSI POMPA ---
+          console.log(`[SYSTEM] ⚙️  ${actionMsg}`);
+        }
+      }
+    }
+
+    res
+      .status(201)
+      .json({ message: "Data sensor tersimpan dan logika diproses" });
+  } catch (err) {
+    console.error("❌ Error sendData:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
