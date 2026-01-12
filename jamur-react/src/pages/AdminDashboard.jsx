@@ -210,3 +210,208 @@ const AdminDashboard = () => {
         navigate("/login");
     }
   };
+
+  return (
+    <div className="container-fluid">
+      <div className="row">
+        {/* SIDEBAR */}
+        <div className="col-md-2 bg-dark text-white min-vh-100 p-3">
+            <h4 className="text-center text-info mb-4"><i className="bi bi-patch-check"></i> Admin Panel</h4>
+            <div className="nav flex-column nav-pills">
+                <button className={`nav-link text-start text-white mb-2 ${activeTab === 'dashboard' ? 'active bg-primary' : ''}`} onClick={() => setActiveTab('dashboard')}>
+                    <i className="bi bi-speedometer2 me-2"></i> Dashboard
+                </button>
+                <button className={`nav-link text-start text-white mb-2 ${activeTab === 'add_user' ? 'active bg-primary' : ''}`} onClick={() => setActiveTab('add_user')}>
+                    <i className="bi bi-person-plus me-2"></i> Tambah Petani
+                </button>
+                <button className={`nav-link text-start text-white mb-2 ${activeTab === 'manage_user' ? 'active bg-primary' : ''}`} onClick={() => { setActiveTab('manage_user'); fetchUsers(); }}>
+                    <i className="bi bi-people-fill me-2"></i> Kelola User
+                </button>
+                <button className={`nav-link text-start text-white mb-2 ${activeTab === 'logs' ? 'active bg-primary' : ''}`} onClick={() => { setActiveTab('logs'); fetchLogs(); }}>
+                    <i className="bi bi-journal-text me-2"></i> History Log
+                </button>
+                <hr className="text-secondary"/>
+                <button className="nav-link text-start text-danger" onClick={handleLogout}>
+                    <i className="bi bi-box-arrow-left me-2"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className="col-md-10 p-4 bg-light">
+            
+            {/* KONTEN: DASHBOARD */}
+            {activeTab === 'dashboard' && (
+                <div className="fade-in">
+                    <div className="d-flex justify-content-between mb-4">
+                        <h3>Monitor & Konfigurasi</h3>
+                        <span className="badge bg-primary fs-6 p-2 rounded-pill">Admin: {adminName}</span>
+                    </div>
+
+                    {/* Sensor Cards */}
+                    <div className="row mb-4">
+                        <div className="col-md-6">
+                            <div className="card p-3 border-start border-danger border-5 shadow-sm">
+                                <h2 className="text-danger fw-bold">{sensorData.temperature}°C</h2>
+                                <span className="text-muted">Suhu Saat Ini</span>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="card p-3 border-start border-primary border-5 shadow-sm">
+                                <h2 className="text-primary fw-bold">{sensorData.humidity}%</h2>
+                                <span className="text-muted">Kelembapan Saat Ini</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Grafik */}
+                    <div className="card p-4 shadow-sm mb-4">
+                        <h5>Grafik Tren Sensor</h5>
+                        <div style={{ height: "300px" }}>
+                            <canvas ref={chartRef}></canvas>
+                        </div>
+                    </div>
+
+                    {/* Settings Form */}
+                    <div className="card p-4 shadow-sm">
+                        <h5>Kontrol Ambang Batas</h5>
+                        <div className="row mt-3">
+                            <div className="col-md-6">
+                                <label>Batas Kelembapan (%)</label>
+                                <input type="number" className="form-control" 
+                                    value={settings.min_humidity} 
+                                    onChange={(e) => setSettings({...settings, min_humidity: e.target.value})} 
+                                />
+                            </div>
+                            <div className="col-md-6">
+                                <label>Mode Operasi</label>
+                                <select className="form-select" 
+                                    value={settings.mode} 
+                                    onChange={(e) => setSettings({...settings, mode: e.target.value})}>
+                                    <option value="otomatis">OTOMATIS (IoT)</option>
+                                    <option value="manual">MANUAL (User)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button className="btn btn-primary mt-3" onClick={handleUpdateSettings}>Simpan Perubahan</button>
+                    </div>
+                </div>
+            )}
+
+            {/* KONTEN: TAMBAH USER */}
+            {activeTab === 'add_user' && (
+                <div className="card p-4 shadow-sm" style={{maxWidth: "600px"}}>
+                    <h3 className="text-success mb-3">Daftarkan Petani</h3>
+                    <form onSubmit={handleRegister}>
+                        <div className="mb-3">
+                            <label>Nama Lengkap</label>
+                            <input name="full_name" type="text" className="form-control" required />
+                        </div>
+                        <div className="mb-3">
+                            <label>Username</label>
+                            <input name="username" type="text" className="form-control" required />
+                        </div>
+                        <div className="mb-3">
+                            <label>Password</label>
+                            <input name="password" type="password" className="form-control" required minLength="6" />
+                        </div>
+                        <button type="submit" className="btn btn-success w-100">Simpan Akun</button>
+                    </form>
+                </div>
+            )}
+
+            {/* KONTEN: KELOLA USER */}
+            {activeTab === 'manage_user' && (
+                <div className="card p-4 shadow-sm">
+                    <h3>Manajemen Akun</h3>
+                    <div className="table-responsive">
+                        <table className="table table-hover">
+                            <thead className="table-dark">
+                                <tr>
+                                    <th>Nama</th>
+                                    <th>Username</th>
+                                    <th>Role</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.map(u => (
+                                    <tr key={u.id}>
+                                        <td>{u.full_name}</td>
+                                        <td>{u.username}</td>
+                                        <td><span className={`badge ${u.role === 'admin' ? 'bg-danger' : 'bg-success'}`}>{u.role}</span></td>
+                                        <td>
+                                            <button className="btn btn-sm btn-warning me-2" 
+                                                data-bs-toggle="modal" data-bs-target="#editModal"
+                                                onClick={() => setEditUser({ ...u, password: '' })}>
+                                                <i className="bi bi-pencil"></i>
+                                            </button>
+                                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteUser(u.id)}>
+                                                <i className="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* KONTEN: LOGS */}
+            {activeTab === 'logs' && (
+                <div className="card p-4 shadow-sm">
+                    <div className="d-flex justify-content-between mb-3">
+                        <h3>Log Aktivitas</h3>
+                        <button className="btn btn-sm btn-outline-secondary" onClick={fetchLogs}>Refresh</button>
+                    </div>
+                    <table className="table table-striped">
+                        <thead><tr><th>Waktu</th><th>Pelaku</th><th>Aksi</th></tr></thead>
+                        <tbody>
+                            {logs.map((l, i) => (
+                                <tr key={i}>
+                                    <td>{new Date(l.created_at).toLocaleString('id-ID')}</td>
+                                    <td>{l.full_name || 'SISTEM'}</td>
+                                    <td>{l.action}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+      </div>
+
+      {/* MODAL EDIT USER (Bootstrap Native) */}
+      <div className="modal fade" id="editModal" tabIndex="-1" aria-hidden="true">
+        <div className="modal-dialog">
+            <div className="modal-content">
+                <div className="modal-header">
+                    <h5 className="modal-title">Edit User</h5>
+                    <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div className="modal-body">
+                    <label>Nama Lengkap</label>
+                    <input type="text" className="form-control mb-2" value={editUser.full_name} 
+                        onChange={(e) => setEditUser({...editUser, full_name: e.target.value})} />
+                    
+                    <label>Username</label>
+                    <input type="text" className="form-control mb-2" value={editUser.username} 
+                        onChange={(e) => setEditUser({...editUser, username: e.target.value})} />
+                    
+                    <label>Password Baru (Kosongkan jika tetap)</label>
+                    <input type="password" className="form-control" value={editUser.password} 
+                        onChange={(e) => setEditUser({...editUser, password: e.target.value})} />
+                </div>
+                <div className="modal-footer">
+                    <button type="button" className="btn btn-primary" data-bs-dismiss="modal" onClick={handleEditUser}>Simpan</button>
+                </div>
+            </div>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default AdminDashboard;
