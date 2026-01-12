@@ -103,5 +103,26 @@ const AdminDashboard = () => {
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
-  }
-}
+
+    // --- CHART LOGIC ---
+  const fetchChartData = async () => {
+    try {
+      const res = await fetch(`${API_URL}/sensor/all`, { headers: getHeader() });
+      const result = await res.json();
+      const realData = Array.isArray(result) ? result : result.data || [];
+      
+      if (realData.length > 0) {
+        const plotData = realData.slice(0, 15).reverse();
+        updateChart(plotData);
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const updateChart = (data) => {
+    if (!chartRef.current) return;
+    
+    // Hapus chart lama jika ada
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+    
