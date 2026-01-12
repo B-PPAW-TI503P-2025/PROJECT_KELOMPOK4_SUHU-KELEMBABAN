@@ -46,3 +46,19 @@ exports.updateUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Hapus pengguna
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (req.user && req.user.id == id) {
+      return res
+        .status(400)
+        .json({ message: "Tidak bisa menghapus akun sendiri" });
+    }
+    await db.query("DELETE FROM users WHERE id = ?", [id]);
+    res.json({ message: "User berhasil dihapus" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
