@@ -125,4 +125,88 @@ const AdminDashboard = () => {
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
-    
+
+    const ctx = chartRef.current.getContext("2d");
+    chartInstance.current = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.map(d => new Date(d.created_at).toLocaleTimeString("id-ID")),
+        datasets: [
+          {
+            label: "Suhu (°C)",
+            data: data.map(d => d.temperature),
+            borderColor: "#dc3545",
+            backgroundColor: "rgba(220, 53, 69, 0.1)",
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: "Kelembapan (%)",
+            data: data.map(d => d.humidity),
+            borderColor: "#0d6efd",
+            backgroundColor: "rgba(13, 110, 253, 0.1)",
+            fill: true,
+            tension: 0.3
+          }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 } }
+    });
+  };
+
+  // --- ACTIONS ---
+  const handleUpdateSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/settings`, {
+        method: "PUT",
+        headers: { ...getHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          min_humidity: parseFloat(settings.min_humidity),
+          mode: settings.mode
+        }),
+      });
+      if(res.ok) alert("✅ Konfigurasi Tersimpan!");
+    } catch(e) { alert("Gagal Simpan"); }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if(!confirm("Hapus user ini?")) return;
+    await fetch(`${API_URL}/users/${id}`, { method: "DELETE", headers: getHeader() });
+    fetchUsers(); // Refresh table
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const body = Object.fromEntries(formData);
+    body.role = "petani";
+
+    const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { ...getHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    alert(data.message);
+    if(res.ok) e.target.reset();
+  };
+
+  const handleEditUser = async () => {
+    const body = { full_name: editUser.full_name, username: editUser.username };
+    if(editUser.password) body.password = editUser.password;
+
+    await fetch(`${API_URL}/users/${editUser.id}`, {
+        method: "PUT",
+        headers: { ...getHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+    alert("User Updated!");
+    fetchUsers();
+  };
+
+  const handleLogout = () => {
+    if(confirm("Keluar dari sistem?")) {
+        localStorage.clear();
+        navigate("/login");
+    }
+  };
