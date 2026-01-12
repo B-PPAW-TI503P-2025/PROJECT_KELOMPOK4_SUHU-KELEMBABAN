@@ -45,3 +45,40 @@ const AdminDashboard = () => {
       return () => clearInterval(interval);
     }
   }, [navigate, activeTab]);
+
+  // --- API CALLS ---
+  const API_URL = "http://localhost:3001/api";
+  const getHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
+
+  const fetchSensorData = async () => {
+    try {
+      const res = await fetch(`${API_URL}/sensor/latest`);
+      const data = await res.json();
+      setSensorData(data);
+    } catch(e) { console.log(e); }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/settings`, { headers: getHeader() });
+      const data = await res.json();
+      setSettings(data);
+    } catch(e) { console.log(e); }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${API_URL}/users`, { headers: getHeader() });
+      const data = await res.json();
+      setUsers(data);
+    } catch(e) { console.log(e); }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch(`${API_URL}/logs`, { headers: getHeader() });
+      const data = await res.json();
+      setLogs(data);
+    } catch(e) { console.log(e); }
+  };
+}
