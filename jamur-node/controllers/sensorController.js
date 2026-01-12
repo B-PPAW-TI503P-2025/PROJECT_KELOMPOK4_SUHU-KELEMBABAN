@@ -28,3 +28,21 @@ exports.getAllData = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
+// 3. Simpan data (Input dari ESP32 atau Postman) + Logika Otomatis
+exports.sendData = async (req, res) => {
+  const { temperature, humidity } = req.body;
+
+  // Validasi input
+  if (temperature === undefined || humidity === undefined) {
+    return res.status(400).json({ message: "Data tidak lengkap!" });
+  }
+
+  try {
+    // A. Simpan data sensor ke database
+    await db.query(
+      "INSERT INTO sensor_data (temperature, humidity) VALUES (?, ?)",
+      [temperature, humidity]
+    );
