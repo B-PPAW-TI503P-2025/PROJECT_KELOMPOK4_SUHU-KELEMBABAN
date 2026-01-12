@@ -155,4 +155,109 @@ const UserDashboard = () => {
   // Helper untuk status pompa
   const isPumpOn = settings.pump_status === 1 || settings.pump_status === true;
 
-  
+  return (
+    <div className="min-vh-100 bg-light font-sans">
+      {/* NAVBAR */}
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow">
+        <div className="container">
+          <span className="navbar-brand"><i className="bi bi-moisture me-2"></i> Panel Petani</span>
+          <div className="d-flex align-items-center text-white">
+            <span className="me-3">Halo, <strong>{userName}</strong></span>
+            <button onClick={handleLogout} className="btn btn-outline-light btn-sm">Keluar</button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="container">
+        <div className="row">
+          
+          {/* KOLOM KIRI (Sensor & Chart) */}
+          <div className="col-md-8">
+            {/* CARD SENSOR */}
+            <div className="card p-4 mb-4 text-center border-0 shadow-sm">
+              <h5 className="text-start text-muted mb-4"><i className="bi bi-cpu me-2"></i> Kondisi Kumbung</h5>
+              <div className="row">
+                <div className="col-6 border-end">
+                  <p className="mb-0 text-secondary">Suhu</p>
+                  <div className="display-4 fw-bold text-dark">{sensorData.temperature}°C</div>
+                </div>
+                <div className="col-6">
+                  <p className="mb-0 text-secondary">Kelembapan</p>
+                  <div className="display-4 fw-bold text-dark">{sensorData.humidity}%</div>
+                </div>
+              </div>
+              <div className="border-top pt-3 mt-3 d-flex justify-content-between text-muted small">
+                <span><i className="bi bi-info-circle"></i> Target Kelembapan: <strong>{settings.min_humidity}%</strong></span>
+                <span className="badge bg-secondary">MODE: {settings.mode.toUpperCase()}</span>
+              </div>
+            </div>
+
+            {/* CARD CHART */}
+            <div className="card p-4 mb-4 border-0 shadow-sm">
+              <h5 className="text-muted mb-3"><i className="bi bi-graph-up me-2"></i> Tren Real-Time</h5>
+              <div style={{ height: "300px" }}>
+                <canvas ref={chartRef}></canvas>
+              </div>
+            </div>
+
+            {/* CARD HISTORY */}
+            <div className="card p-4 border-0 shadow-sm">
+                <h5 className="text-muted mb-3"><i className="bi bi-clock-history me-2"></i> Riwayat Pompa</h5>
+                <div className="table-responsive">
+                    <table className="table table-sm table-hover">
+                        <thead className="table-light">
+                            <tr><th>Waktu</th><th>Pelaku</th><th>Aksi</th></tr>
+                        </thead>
+                        <tbody>
+                            {logs.length > 0 ? logs.map((log, i) => (
+                                <tr key={i}>
+                                    <td className="small">{new Date(log.created_at).toLocaleString("id-ID")}</td>
+                                    <td>{log.full_name || 'Sistem'}</td>
+                                    <td className={log.action.includes('Nyala') ? 'text-success fw-bold' : ''}>{log.action}</td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan="3" className="text-center">Belum ada riwayat</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+          </div>
+
+          {/* KOLOM KANAN (Kontrol Pompa) */}
+          <div className="col-md-4">
+            <div className="card p-4 mb-4 border-0 shadow-sm">
+                <h5 className="text-muted mb-3">Kontrol Pompa</h5>
+                <div className="text-center mb-4">
+                    <p className="mb-2">Status Saat Ini:</p>
+                    <span className={`badge p-3 w-100 rounded-pill fs-6 ${isPumpOn ? 'bg-success' : 'bg-danger'}`}>
+                        {isPumpOn ? "AKTIF / MENYEMPROT" : "MATI / STANDBY"}
+                    </span>
+                </div>
+
+                <div className="d-grid gap-2">
+                    {isPumpOn ? (
+                        <button onClick={() => handlePumpControl(0)} className="btn btn-danger btn-lg shadow">
+                            <i className="bi bi-stop-circle-fill me-2"></i> MATIKAN POMPA
+                        </button>
+                    ) : (
+                        <button onClick={() => handlePumpControl(1)} className="btn btn-success btn-lg shadow">
+                            <i className="bi bi-play-circle-fill me-2"></i> NYALAKAN POMPA
+                        </button>
+                    )}
+                </div>
+
+                <div className="alert alert-warning mt-3 mb-0 small">
+                    <i className="bi bi-exclamation-triangle me-1"></i>
+                    Mengontrol pompa akan mengubah sistem ke <strong>Mode Manual</strong> secara otomatis.
+                </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UserDashboard;
