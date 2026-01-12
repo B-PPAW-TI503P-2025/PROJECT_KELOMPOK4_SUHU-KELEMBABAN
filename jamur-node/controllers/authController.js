@@ -55,4 +55,61 @@ exports.register = async (req, res) => {
   }
 };
 
+// 2. Fungsi Login
+exports.login = async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ message: "Username dan password wajib diisi!" });
+  }
+
+  try {
+    const [rows] = await db.query("SELECT * FROM users WHERE username = ?", [
+      username,
+    ]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "User tidak ditemukan" });
+    }
+
+    const user = rows[0];
+    const inputPass = String(password).trim();
+    const dbHash = String(user.password).trim();
+
+    const isMatch = await bcrypt.compare(inputPass, dbHash);
+
+    console.log(`[AUTH] Login attempt: ${username} | Result: ${isMatch}`);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Password salah!" });
+    }
+
+    // Buat JWT Token
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET || "KUNCI_RAHASIA_YANG_SAMA",
+      { expiresIn: "24h" }
+    );
+
+    // --- FITUR HISTORY LOG ---
+    // Mencatat aktivitas login sukses
+    await createLog(user.id, `User login ke sistem`);
+
+    res.json({
+      message: "Login Berhasil",
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        full_name: user.full_name,
+      },
+    });
+  } catch (err) {
+    console.error("Login Error:", err);
+    res.status(500).json({ error: "Terjadi kesalahan pada server" });
+  }
+};
 
