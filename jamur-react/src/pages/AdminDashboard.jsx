@@ -8,8 +8,9 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [adminName, setAdminName] = useState("Admin");
   
-  // Data States
+  // --- STATE DATA (Dengan Nilai Default Anti-Blank) ---
   const [sensorData, setSensorData] = useState({ temperature: 0, humidity: 0 });
+  // Kita beri default values lengkap agar tidak crash saat load awal
   const [settings, setSettings] = useState({ min_humidity: 80, mode: "otomatis", pump_status: 0 });
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -21,7 +22,7 @@ const AdminDashboard = () => {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
-  // Style Glassmorphism
+  // Style Glassmorphism (Transparan Gelap)
   const glassStyle = {
     background: "rgba(255, 255, 255, 0.05)",
     backdropFilter: "blur(10px)",
@@ -45,19 +46,28 @@ const AdminDashboard = () => {
       navigate("/login");
     } else {
       setAdminName(localStorage.getItem("username") || "Admin");
-      fetchSensorData();
-      fetchSettings();
-      fetchChartData();
       
+      // Load data saat halaman pertama kali dibuka
+      refreshData();
+      
+      // Auto refresh HANYA untuk Sensor & Chart (Settings TIDAK direfresh agar edit tidak mental)
       const interval = setInterval(() => {
         if(activeTab === "dashboard") {
           fetchSensorData();
           fetchChartData();
         }
       }, 3000);
+      
       return () => clearInterval(interval);
     }
   }, [navigate, activeTab]);
+
+  const refreshData = () => {
+      fetchSensorData();
+      fetchSettings();
+      fetchChartData();
+      fetchUsers();
+  };
 
   // --- API CALLS ---
   const API_URL = "http://localhost:3001/api";
@@ -67,33 +77,35 @@ const AdminDashboard = () => {
     try {
       const res = await fetch(`${API_URL}/sensor/latest`);
       const data = await res.json();
-      setSensorData(data);
-    } catch(e) { console.log(e); }
+      if(data) setSensorData(data);
+    } catch(e) { console.log("Menunggu sensor..."); }
   };
 
   const fetchSettings = async () => {
     try {
       const res = await fetch(`${API_URL}/settings`, { headers: getHeader() });
       const data = await res.json();
-      // Pastikan data tidak null sebelum di-set
-      if (data) setSettings(data);
-    } catch(e) { console.log(e); }
+      // Safety Check: Pastikan data settings valid sebelum menimpa state
+      if (data && typeof data === 'object') {
+          setSettings(prev => ({ ...prev, ...data }));
+      }
+    } catch(e) { console.log("Menunggu settings..."); }
   };
 
   const fetchUsers = async () => {
     try {
       const res = await fetch(`${API_URL}/users`, { headers: getHeader() });
       const data = await res.json();
-      setUsers(data);
-    } catch(e) { console.log(e); }
+      if(Array.isArray(data)) setUsers(data);
+    } catch(e) { console.log("Gagal load users"); }
   };
 
   const fetchLogs = async () => {
     try {
       const res = await fetch(`${API_URL}/logs`, { headers: getHeader() });
       const data = await res.json();
-      setLogs(data);
-    } catch(e) { console.log(e); }
+      if(Array.isArray(data)) setLogs(data);
+    } catch(e) { console.log("Gagal load logs"); }
   };
 
   // --- CHART LOGIC ---
@@ -107,7 +119,7 @@ const AdminDashboard = () => {
         const plotData = realData.slice(0, 15).reverse();
         updateChart(plotData);
       }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error("Chart loading..."); }
   };
 
   const updateChart = (data) => {
@@ -128,7 +140,7 @@ const AdminDashboard = () => {
           {
             label: "Suhu (°C)",
             data: data.map(d => d.temperature),
-            borderColor: "#f87171", // Merah Terang
+            borderColor: "#f87171",
             backgroundColor: "rgba(248, 113, 113, 0.2)",
             fill: true,
             tension: 0.4
@@ -136,7 +148,7 @@ const AdminDashboard = () => {
           {
             label: "Kelembapan (%)",
             data: data.map(d => d.humidity),
-            borderColor: "#38bdf8", // Biru Terang
+            borderColor: "#38bdf8",
             backgroundColor: "rgba(56, 189, 248, 0.2)",
             fill: true,
             tension: 0.4
@@ -146,6 +158,7 @@ const AdminDashboard = () => {
       options: { 
         responsive: true, 
         maintainAspectRatio: false, 
+        animation: { duration: 0 },
         plugins: { legend: { labels: { color: 'white' } } },
         scales: {
             x: { ticks: { color: 'white' } },
@@ -168,7 +181,7 @@ const AdminDashboard = () => {
       });
       if(res.ok) {
           alert("✅ Konfigurasi Tersimpan!");
-          fetchSettings(); // Refresh data settings setelah simpan
+          fetchSettings(); // Refresh setelah simpan
       }
     } catch(e) { alert("Gagal Simpan"); }
   };
@@ -185,27 +198,31 @@ const AdminDashboard = () => {
     const body = Object.fromEntries(formData);
     body.role = "petani";
 
-    const res = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: { ...getHeader(), "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    alert(data.message);
-    if(res.ok) e.target.reset();
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+          method: "POST",
+          headers: { ...getHeader(), "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      alert(data.message);
+      if(res.ok) e.target.reset();
+    } catch(e) { alert("Gagal Register"); }
   };
 
   const handleEditUser = async () => {
     const body = { full_name: editUser.full_name, username: editUser.username };
     if(editUser.password) body.password = editUser.password;
 
-    await fetch(`${API_URL}/users/${editUser.id}`, {
-        method: "PUT",
-        headers: { ...getHeader(), "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    });
-    alert("User Updated!");
-    fetchUsers();
+    try {
+      await fetch(`${API_URL}/users/${editUser.id}`, {
+          method: "PUT",
+          headers: { ...getHeader(), "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+      });
+      alert("User Updated!");
+      fetchUsers();
+    } catch(e) { alert("Gagal Update"); }
   };
 
   const handleLogout = () => {
@@ -215,13 +232,12 @@ const AdminDashboard = () => {
     }
   };
 
-  // Main Layout Background
   return (
     <div className="container-fluid min-vh-100 text-white" 
          style={{ background: "radial-gradient(circle at top left, #1e293b, #0f172a)" }}>
       
       <div className="row">
-        {/* SIDEBAR GLASS */}
+        {/* SIDEBAR */}
         <div className="col-md-2 p-3 d-flex flex-column min-vh-100" 
              style={{ background: "rgba(0,0,0,0.2)", backdropFilter: "blur(10px)", borderRight: "1px solid rgba(255,255,255,0.1)" }}>
             
@@ -265,13 +281,13 @@ const AdminDashboard = () => {
                         </span>
                     </div>
 
-                    {/* Sensor Cards */}
+                    {/* Sensor Cards (Pakai Optional Chaining ?. biar aman) */}
                     <div className="row mb-4 g-4">
                         <div className="col-md-6">
                             <div className="p-4 h-100 d-flex align-items-center" style={{ ...glassStyle, borderLeft: "5px solid #f87171" }}>
                                 <i className="bi bi-thermometer-half fs-1 me-3 text-danger"></i>
                                 <div>
-                                    <h1 className="fw-bold mb-0">{sensorData.temperature}°C</h1>
+                                    <h1 className="fw-bold mb-0">{sensorData?.temperature || 0}°C</h1>
                                     <small className="text-white-50">Suhu Saat Ini</small>
                                 </div>
                             </div>
@@ -280,7 +296,7 @@ const AdminDashboard = () => {
                             <div className="p-4 h-100 d-flex align-items-center" style={{ ...glassStyle, borderLeft: "5px solid #38bdf8" }}>
                                 <i className="bi bi-droplet-fill fs-1 me-3 text-info"></i>
                                 <div>
-                                    <h1 className="fw-bold mb-0">{sensorData.humidity}%</h1>
+                                    <h1 className="fw-bold mb-0">{sensorData?.humidity || 0}%</h1>
                                     <small className="text-white-50">Kelembapan Saat Ini</small>
                                 </div>
                             </div>
@@ -295,8 +311,7 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Settings Form Glass */}
-                    {/* AREA KONTROL & STATUS (ROW BARU) */}
+                    {/* AREA KONTROL & STATUS */}
                     <div className="row g-4">
                         
                         {/* 1. KOLOM KIRI: FORM SETTING */}
@@ -311,7 +326,8 @@ const AdminDashboard = () => {
                                                 type="number" 
                                                 className="form-control" 
                                                 style={inputGlassStyle}
-                                                value={settings.min_humidity} 
+                                                // Default value '0' jika data belum siap
+                                                value={settings?.min_humidity || 0} 
                                                 onChange={(e) => setSettings({...settings, min_humidity: e.target.value})} 
                                             />
                                             <span className="input-group-text text-white border-0" style={{ background: "rgba(255,255,255,0.1)" }}>%</span>
@@ -322,7 +338,8 @@ const AdminDashboard = () => {
                                         <select 
                                             className="form-select" 
                                             style={inputGlassStyle}
-                                            value={settings.mode} 
+                                            // Default 'otomatis' jika data belum siap
+                                            value={settings?.mode || "otomatis"} 
                                             onChange={(e) => setSettings({...settings, mode: e.target.value})}>
                                             <option value="otomatis" className="text-dark">OTOMATIS (IoT)</option>
                                             <option value="manual" className="text-dark">MANUAL (User)</option>
@@ -337,27 +354,28 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* 2. KOLOM KANAN: PANEL STATUS PERANGKAT (BARU) */}
+                        {/* 2. KOLOM KANAN: PANEL STATUS PERANGKAT */}
                         <div className="col-md-5">
                             <div className="p-4 shadow-lg h-100" style={glassStyle}>
                                 <h5 className="mb-4 text-info"><i className="bi bi-broadcast me-2"></i> Status Perangkat</h5>
                                 
                                 <div className="d-flex justify-content-between align-items-center border-bottom border-secondary pb-3 mb-3">
                                     <span className="text-white-50">Mode Aktif</span>
-                                    <span className={`badge rounded-pill px-3 py-2 ${settings.mode === 'otomatis' ? 'bg-primary' : 'bg-warning text-dark'}`}>
-                                        {settings.mode.toUpperCase()}
+                                    {/* SAFETY CHECK: Pastikan settings.mode ada sebelum di .toUpperCase() */}
+                                    <span className={`badge rounded-pill px-3 py-2 ${settings?.mode === 'otomatis' ? 'bg-primary' : 'bg-warning text-dark'}`}>
+                                        {(settings?.mode || "OTOMATIS").toUpperCase()}
                                     </span>
                                 </div>
 
                                 <div className="d-flex justify-content-between align-items-center border-bottom border-secondary pb-3 mb-3">
                                     <span className="text-white-50">Ambang Batas</span>
-                                    <span className="fw-bold fs-5 text-info">{settings.min_humidity}%</span>
+                                    <span className="fw-bold fs-5 text-info">{settings?.min_humidity || 0}%</span>
                                 </div>
 
                                 <div className="d-flex justify-content-between align-items-center border-bottom border-secondary pb-3 mb-3">
                                     <span className="text-white-50">Kondisi Pompa</span>
-                                    <span className={`fw-bold ${settings.pump_status ? 'text-success' : 'text-danger'}`}>
-                                        {settings.pump_status ? (
+                                    <span className={`fw-bold ${settings?.pump_status ? 'text-success' : 'text-danger'}`}>
+                                        {settings?.pump_status ? (
                                             <span><i className="bi bi-check-circle-fill me-1"></i> NYALA (ON)</span>
                                         ) : (
                                             <span><i className="bi bi-x-circle-fill me-1"></i> MATI (STANDBY)</span>
@@ -368,7 +386,7 @@ const AdminDashboard = () => {
                                 <div className="d-flex justify-content-between align-items-center pt-2">
                                     <span className="text-white-50">Sinkronisasi</span>
                                     <small className="text-white-50" style={{ fontSize: "0.8rem" }}>
-                                        {settings.updated_at ? new Date(settings.updated_at).toLocaleString('id-ID') : '-'}
+                                        {settings?.updated_at ? new Date(settings.updated_at).toLocaleString('id-ID') : '-'}
                                     </small>
                                 </div>
                             </div>
@@ -461,7 +479,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* MODAL EDIT USER (Tetap pakai Bootstrap Modal tapi disesuaikan dikit warnanya) */}
+      {/* MODAL EDIT USER */}
       <div className="modal fade" id="editModal" tabIndex="-1" aria-hidden="true">
         <div className="modal-dialog">
             <div className="modal-content bg-dark text-white border-secondary">

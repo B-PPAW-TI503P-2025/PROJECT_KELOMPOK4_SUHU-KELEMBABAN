@@ -15,9 +15,9 @@ const pool = mysql.createPool({
 // Tes koneksi saat pertama kali dijalankan
 pool.getConnection((err, connection) => {
   if (err) {
-    console.error("Koneksi database gagal (Port 3309):", err.message);
+    console.error("Koneksi database gagal (Port 3306):", err.message);
   } else {
-    console.log("Koneksi database MySQL di port 3309 BERHASIL!");
+    console.log("Koneksi database MySQL di port 3306 BERHASIL!");
     connection.release();
   }
 });
